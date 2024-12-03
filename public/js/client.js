@@ -1,6 +1,12 @@
-const ws = new WebSocket('ws://localhost:3000');
+// const ws = new WebSocket('ws://localhost:3000');
 let localStream, peerConnection, dataChannel, username;
 let connectedUsers = [];
+
+const host = window.location.hostname; // Gets the hostname from the current URL
+const port = '3000'; // Specify your WebSocket server port here
+
+// Construct the WebSocket URL
+const ws = new WebSocket(`ws://${host}:${port}`);
 
 // Element references
 const login = document.getElementById('login');
