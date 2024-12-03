@@ -1,7 +1,7 @@
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const app = express();
-const PORT = 3000;
+const PORT = 443;
 
 // Serve static files
 app.use(express.static('public'));
@@ -37,7 +37,7 @@ app.get('/', (req, res) => {
     res.render("index");
   });
 
-  const PORTUI = process.env.PORTUI || 8000;
+  const PORTUI = process.env.PORTUI || 443;
 app.listen(PORTUI, async () => {
   try {
     // await redisClient.ping(); // Test Redis connection

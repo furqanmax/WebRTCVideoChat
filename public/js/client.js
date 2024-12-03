@@ -3,7 +3,7 @@ let localStream, peerConnection, dataChannel, username;
 let connectedUsers = [];
 
 const host = window.location.hostname; // Gets the hostname from the current URL
-const port = '3000'; // Specify your WebSocket server port here
+const port = '443'; // Specify your WebSocket server port here
 
 // Construct the WebSocket URL
 const ws = new WebSocket(`wss://${host}:${port}`);
