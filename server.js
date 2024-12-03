@@ -37,7 +37,7 @@ app.get('/', (req, res) => {
     res.render("index");
   });
 
-  const PORTUI = process.env.PORTUI || 443;
+  const PORTUI = process.env.PORTUI || 8000;
 app.listen(PORTUI, async () => {
   try {
     // await redisClient.ping(); // Test Redis connection
