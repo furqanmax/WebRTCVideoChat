@@ -6,7 +6,7 @@ const host = window.location.hostname; // Gets the hostname from the current URL
 const port = '3000'; // Specify your WebSocket server port here
 
 // Construct the WebSocket URL
-const ws = new WebSocket(`ws://${host}:${port}`);
+const ws = new WebSocket(`wss://${host}:${port}`);
 
 // Element references
 const login = document.getElementById('login');
