@@ -1,14 +1,15 @@
 const express = require('express');
 const { WebSocketServer } = require('ws');
+const config = require('./config'); // Import the configuration
 const app = express();
-const PORT = 443;
+const PORT = config.wsPort;
 
 // Serve static files
 app.use(express.static('public'));
 
 // Start HTTP Server
 const server = app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on ${config.secure ? 'https' : 'http'}://${config.hostname}:${PORT}`);
 });
 
 // WebSocket signaling server
@@ -22,7 +23,7 @@ const bodyParser = require('body-parser');
 
 
 
-console.log(`WebSocket server started on ws://localhost:${PORT}`);
+console.log(`WebSocket server started on ${config.secure ? 'wss' : 'ws'}://${config.hostname}:${PORT}`);
 
 const connections = {};
 
@@ -37,7 +38,7 @@ app.get('/', (req, res) => {
     res.render("index");
   });
 
-  const PORTUI = process.env.PORTUI || 8000;
+  const PORTUI = config.httpPort;
 app.listen(PORTUI, async () => {
   try {
     // await redisClient.ping(); // Test Redis connection
@@ -84,9 +85,10 @@ wss.on('connection', (ws) => {
         }
         break;
 
-    case 'message':
+      case 'message':
         if (clients[data.to]) {
-            clients[data.to].send(JSON.stringify(data));
+          const payload = JSON.stringify({ type: 'message', sender: ws.name, message: data.message });
+          clients[data.to].send(payload);
         }
         break;
 

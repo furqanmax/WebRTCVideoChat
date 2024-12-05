@@ -3,10 +3,26 @@ let localStream, peerConnection, dataChannel, username;
 let connectedUsers = [];
 
 const host = window.location.hostname; // Gets the hostname from the current URL
-const port = '443'; // Specify your WebSocket server port here
+// const port = '3333'; // Specify your WebSocket server port here
+
+const isLocal = window.location.hostname === 'localhost';
+const config = {
+  local: {
+    wsProtocol: 'ws',
+    wsHost: 'localhost',
+    wsPort: 3333, // Ensure this matches the server
+  },
+  production: {
+    wsProtocol: 'wss',
+    wsHost: window.location.hostname,
+    wsPort: 443,
+  },
+};
+const { wsProtocol, wsHost, wsPort } = isLocal ? config.local : config.production;
+const ws = new WebSocket(`${wsProtocol}://${wsHost}:${wsPort}`);
 
 // Construct the WebSocket URL
-const ws = new WebSocket(`wss://${host}:${port}`);
+// const ws = new WebSocket(`ws://${host}:${port}`);
 
 // Element references
 const login = document.getElementById('login');
@@ -31,15 +47,19 @@ const servers = {
 
 // Login functionality
 loginBtn.addEventListener('click', async () => {
-  username = document.getElementById('username').value;
+  username = document.getElementById('username').value.trim();
   if (!username) return alert('Enter your name');
-  ws.send(JSON.stringify({ type: 'login', name: username }));
-  login.hidden = true;
-  main.hidden = false;
+  
+  ws.send(JSON.stringify({ type: 'login', name: username })); // Notify server of login
+  login.remove(); // Hide login screen
+  main.hidden = false; // Show main video section
 
+  // Access user media
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+    localVideo.setAttribute('playsinline', 'true');
     localVideo.srcObject = localStream;
+    localVideo.play(); // Ensure the video plays automatically
   } catch (error) {
     alert('Could not access camera or microphone.');
     console.error('Media access error:', error);
@@ -57,13 +77,15 @@ startCallBtn.addEventListener('click', () => {
 sendBtn.addEventListener('click', () => {
   const message = messageInput.value;
   if (dataChannel && dataChannel.readyState === 'open') {
-    dataChannel.send(message);
-    messages.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+    const payload = { sender: username, message }; // Include sender's name in the payload
+    dataChannel.send(JSON.stringify(payload));
+    messages.innerHTML += `<p><strong>${username}:</strong> ${message}</p>`;
     messageInput.value = '';
   } else {
     alert('Data channel is not open.');
   }
 });
+
 
 // Mute/Unmute Mic
 toggleMicBtn.addEventListener('click', () => {
@@ -100,7 +122,7 @@ ws.onmessage = (message) => {
 
 // Update user list
 function updateUserList(users) {
-  connectedUsers = users.filter(user => user !== username);
+  connectedUsers = users.filter((user) => user !== username);
 }
 
 // Start Call
@@ -112,6 +134,7 @@ function startCall(peerName) {
   setupDataChannel();
 
   peerConnection.ontrack = (event) => {
+    remoteVideo.setAttribute('playsinline', 'true');
     remoteVideo.srcObject = event.streams[0];
   };
 
@@ -159,6 +182,8 @@ function setupDataChannel() {
   dataChannel.onopen = () => console.log('Data channel opened');
   dataChannel.onclose = () => console.log('Data channel closed');
   dataChannel.onmessage = (event) => {
-    messages.innerHTML += `<p><strong>Peer:</strong> ${event.data}</p>`;
+    const { sender, message } = JSON.parse(event.data); // Parse the sender and message
+    messages.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
   };
+  
 }
