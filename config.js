@@ -6,7 +6,7 @@ const config = {
       secure: false,
     },
     production: {
-      httpPort: 443,
+      httpPort: 8000,
       wsPort: 443,
       hostname: 'your-production-domain.com',
       secure: true,
