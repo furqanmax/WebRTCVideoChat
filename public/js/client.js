@@ -187,3 +187,24 @@ function setupDataChannel() {
   };
   
 }
+
+
+// Disconnect Button Functionality
+const disconnectBtn = document.getElementById('disconnectBtn');
+
+disconnectBtn.addEventListener('click', () => {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  localStream.getTracks().forEach((track) => track.stop());
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+  alert('Disconnected from the call.');
+});
+
+// Ensure cleanup on page reload or exit
+window.addEventListener('beforeunload', () => {
+  if (peerConnection) peerConnection.close();
+  if (localStream) localStream.getTracks().forEach((track) => track.stop());
+});
