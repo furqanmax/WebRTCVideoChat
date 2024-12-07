@@ -126,55 +126,145 @@ function updateUserList(users) {
 }
 
 // Start Call
+// function startCall(peerName) {
+//   peerConnection = new RTCPeerConnection(servers);
+//   localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+//   dataChannel = peerConnection.createDataChannel('chat');
+//   setupDataChannel();
+
+//   peerConnection.ontrack = (event) => {
+//     remoteVideo.setAttribute('playsinline', 'true');
+//     remoteVideo.srcObject = event.streams[0];
+//   };
+
+//   peerConnection.onicecandidate = (event) => {
+//     if (event.candidate) {
+//       ws.send(JSON.stringify({ type: 'candidate', to: peerName, candidate: event.candidate }));
+//     }
+//   };
+
+//   peerConnection.createOffer().then(offer => {
+//     ws.send(JSON.stringify({ type: 'offer', to: peerName, offer }));
+//     peerConnection.setLocalDescription(offer);
+//   });
+// }
+
 function startCall(peerName) {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
   peerConnection = new RTCPeerConnection(servers);
+
+  // Add local media tracks
   localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
+  // Create and setup Data Channel
   dataChannel = peerConnection.createDataChannel('chat');
   setupDataChannel();
 
+  // Handle remote track
   peerConnection.ontrack = (event) => {
-    remoteVideo.setAttribute('playsinline', 'true');
-    remoteVideo.srcObject = event.streams[0];
+    if (event.streams && event.streams[0]) {
+      remoteVideo.setAttribute('playsinline', 'true');
+      remoteVideo.srcObject = event.streams[0];
+    } else {
+      console.warn('No streams found on track event');
+    }
   };
 
+  // Handle ICE candidates
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
       ws.send(JSON.stringify({ type: 'candidate', to: peerName, candidate: event.candidate }));
     }
   };
 
-  peerConnection.createOffer().then(offer => {
-    ws.send(JSON.stringify({ type: 'offer', to: peerName, offer }));
-    peerConnection.setLocalDescription(offer);
-  });
+  // Create and send offer
+  peerConnection.createOffer()
+    .then(offer => {
+      return peerConnection.setLocalDescription(offer).then(() => {
+        ws.send(JSON.stringify({ type: 'offer', to: peerName, offer }));
+      });
+    })
+    .catch(error => console.error('Error creating or sending offer:', error));
 }
 
 // Handle offer
+// function handleOffer(offer, from) {
+//   peerConnection = new RTCPeerConnection(servers);
+//   localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+//   peerConnection.ondatachannel = (event) => {
+//     dataChannel = event.channel;
+//     setupDataChannel();
+//   };
+
+//   peerConnection.ontrack = (event) => {
+//     remoteVideo.srcObject = event.streams[0];
+//   };
+
+//   peerConnection.onicecandidate = (event) => {
+//     if (event.candidate) {
+//       ws.send(JSON.stringify({ type: 'candidate', to: from, candidate: event.candidate }));
+//     }
+//   };
+
+//   peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+//   peerConnection.createAnswer().then(answer => {
+//     ws.send(JSON.stringify({ type: 'answer', to: from, answer }));
+//     peerConnection.setLocalDescription(answer);
+//   });
+// }
+
 function handleOffer(offer, from) {
+  // Close any existing peer connection
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  // Initialize peer connection
   peerConnection = new RTCPeerConnection(servers);
+
+  // Add local media tracks
   localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
+  // Handle data channel
   peerConnection.ondatachannel = (event) => {
     dataChannel = event.channel;
     setupDataChannel();
   };
 
+  // Handle remote track
   peerConnection.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
+    if (event.streams && event.streams[0]) {
+      remoteVideo.srcObject = event.streams[0];
+    } else {
+      console.warn('No streams found on track event');
+    }
   };
 
+  // Handle ICE candidates
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
       ws.send(JSON.stringify({ type: 'candidate', to: from, candidate: event.candidate }));
     }
   };
 
-  peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  peerConnection.createAnswer().then(answer => {
-    ws.send(JSON.stringify({ type: 'answer', to: from, answer }));
-    peerConnection.setLocalDescription(answer);
-  });
+  // Process the offer and create an answer
+  peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+    .then(() => peerConnection.createAnswer())
+    .then(answer => {
+      return peerConnection.setLocalDescription(answer).then(() => {
+        ws.send(JSON.stringify({ type: 'answer', to: from, answer }));
+      });
+    })
+    .catch(error => {
+      console.error('Error handling offer:', error);
+    });
 }
 
 // Setup data channel
