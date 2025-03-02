@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Meeting App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #video-container {
+            display: none;
+        }
+        video {
+            width: 100%;
+            max-width: 100%;
+            background-color: black;
+            border-radius: 10px;
+        }
+        .btn-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Start Your Meeting</h1>
+
+    <!-- Meeting Setup -->
+    <div id="meeting-setup" class="text-center">
+        <button id="start-meeting" class="btn btn-primary btn-lg">
+            Start Meeting
+        </button>
+    </div>
+
+    <!-- Meeting Code -->
+    <div id="meeting-code" class="mt-4 text-center"></div>
+
+    <!-- Video and Username Form -->
+    <div id="video-container" class="row mt-5 align-items-center">
+        <!-- Video Section -->
+        <div class="col-md-6">
+            <video id="user-video" autoplay></video>
+            <div class="d-flex justify-content-center mt-3">
+                <button id="toggle-camera" class="btn btn-secondary btn-icon me-2" data-bs-toggle="tooltip" title="Toggle Camera">
+                    <i class="bi bi-camera-video"></i>
+                </button>
+                <button id="toggle-mic" class="btn btn-secondary btn-icon" data-bs-toggle="tooltip" title="Toggle Microphone">
+                    <i class="bi bi-mic"></i>
+                </button>
+                <button id="flip-button" class="btn btn-secondary btn-icon" data-bs-toggle="tooltip" title="Change Camera">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+                
+            </div>
+        </div>
+
+        <!-- Username Input Section -->
+        <div class="col-md-6">
+            <form id="username-form">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Enter Your Name</label>
+                    <input type="text" id="username" class="form-control" placeholder="Your Name" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100">Save Settings</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Go Back Button -->
+    <div id="go-back-container" class="text-center mt-5" style="display: none;">
+        <button id="go-back" class="btn btn-secondary btn-lg">Go Back</button>
+    </div>
+</div>
+
+<script>
+    // Helper function to generate a unique code
+    function generateMeetingCode() {
+        return Math.random().toString(36).substring(2, 10).toUpperCase();
+    }
+
+    let videoTrack; // To store the video track
+    let stream; // To store the media stream
+
+
+    let front = false;
+    document.getElementById("flip-button").onclick = () => {
+        front = !front;
+    };
+
+
+    const constraints = { video: { 
+            facingMode: front ? "user" : "environment",
+            width: { min: 1024, ideal: 1280, max: 1920 },
+            height: { min: 576, ideal: 720, max: 1080 }, 
+            // frameRate: { ideal: 10, max: 15 },
+        }, audio: true };
+
+    // Start the meeting
+    document.getElementById('start-meeting').addEventListener('click', () => {
+        const codeContainer = document.getElementById('meeting-code');
+        const meetingCode = generateMeetingCode();
+        codeContainer.innerHTML = `<h2>Meeting Code: <span class="text-primary">${meetingCode}</span></h2>`;
+
+        document.getElementById('meeting-setup').style.display = 'none';
+        document.getElementById('video-container').style.display = 'flex';
+        document.getElementById('go-back-container').style.display = 'block';
+
+        // Access user's camera and microphone
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then((mediaStream) => {
+                const constraints = {
+                    video: { facingMode: front ? "user" : "environment" },
+                    };
+                stream = mediaStream; // Store the stream
+                const videoElement = document.getElementById('user-video');
+                videoElement.srcObject = stream;
+
+                // Get the video track from the stream
+                videoTrack = stream.getVideoTracks()[0];
+
+                const cameraButton = document.getElementById('toggle-camera');
+                const micButton = document.getElementById('toggle-mic');
+
+                // Toggle camera functionality
+                cameraButton.addEventListener('click', () => {
+                    if (videoTrack) {
+                        if (videoTrack.enabled) {
+                            videoTrack.enabled = false; // Disable the track
+                            videoTrack.stop();
+                            cameraButton.classList.add('btn-danger');
+                            cameraButton.classList.remove('btn-secondary');
+                        } else {
+                            // Enable the track
+                            navigator.mediaDevices.getUserMedia({video: { facingMode: "user"  },});
+                            // videoTrack.stream = true; 
+                            videoTrack.enabled = true; 
+                            cameraButton.classList.remove('btn-danger');
+                            cameraButton.classList.add('btn-secondary');
+                        }
+                    }
+
+                    let front = false;
+                    document.getElementById("flip-button").onclick = () => {
+                    front = !front;
+                    };
+
+                    
+                });
+
+                // Toggle microphone functionality
+                micButton.addEventListener('click', () => {
+                    const audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        if (audioTrack.enabled) {
+                            audioTrack.enabled = false; // Disable the track
+                            micButton.classList.add('btn-danger');
+                            micButton.classList.remove('btn-secondary');
+                        } else {
+                            audioTrack.enabled = true; // Enable the track
+                            micButton.classList.remove('btn-danger');
+                            micButton.classList.add('btn-secondary');
+                        }
+                    }
+                });
+            })
+            .catch((error) => {
+                alert('Unable to access camera or microphone: ' + error.message);
+            });
+    });
+
+    // Stop the camera when going back
+    document.getElementById('go-back').addEventListener('click', () => {
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop()); // Stop all tracks
+        }
+        document.getElementById('meeting-setup').style.display = 'block';
+        document.getElementById('video-container').style.display = 'none';
+        document.getElementById('go-back-container').style.display = 'none';
+        document.getElementById('meeting-code').innerHTML = '';
+    });
+    </script>
+
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+</body>
+</html>

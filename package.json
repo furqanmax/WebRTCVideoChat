@@ -10,9 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ws": "^8.18.0",
+    "body-parser": "^1.20.3",
     "ejs": "^3.1.10",
     "express": "^4.21.1",
-    "body-parser": "^1.20.3"
+    "web-vitals": "^4.2.4",
+    "ws": "^8.18.0"
   }
 }

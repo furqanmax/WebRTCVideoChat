@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #status {
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 5px;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #333;
+      font-size: 2em;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cell:hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Player X's turn</div>
+  <div class="grid">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <script>
+    // Simplified WebRTC Tic Tac Toe game
+    const signalingServerUrl = 'ws://localhost:3334'; // Replace with your WebSocket server
+    const socket = new WebSocket(signalingServerUrl);
+    let peerConnection;
+    let dataChannel;
+
+    const configuration = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+
+    const board = Array(9).fill(null);
+    let currentPlayer = 'X';
+
+    // DOM Elements
+    const cells = document.querySelectorAll('.cell');
+    const statusDisplay = document.getElementById('status');
+
+    // Initialize WebSocket
+    socket.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.offer) {
+        peerConnection = new RTCPeerConnection(configuration);
+        setupPeerConnection();
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.send(JSON.stringify({ answer }));
+      }
+
+      if (message.answer) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+      }
+
+      if (message.candidate) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+      }
+    };
+
+    socket.onopen = () => {
+      peerConnection = new RTCPeerConnection(configuration);
+      setupPeerConnection();
+      dataChannel = peerConnection.createDataChannel('game');
+      setupDataChannel();
+
+      peerConnection.onnegotiationneeded = async () => {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.send(JSON.stringify({ offer }));
+      };
+    };
+
+    function setupPeerConnection() {
+      peerConnection.ondatachannel = (event) => {
+        dataChannel = event.channel;
+        setupDataChannel();
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.send(JSON.stringify({ candidate: event.candidate }));
+        }
+      };
+    }
+
+    function setupDataChannel() {
+      dataChannel.onmessage = (event) => {
+        const { cellIndex, player } = JSON.parse(event.data);
+        board[cellIndex] = player;
+        renderBoard();
+        checkWinner();
+        togglePlayer();
+      };
+    }
+
+    // Game Logic
+    cells.forEach((cell) => {
+      cell.addEventListener('click', () => {
+        const index = parseInt(cell.getAttribute('data-index'), 10);
+        if (!board[index] && currentPlayer === 'X') {
+          board[index] = currentPlayer;
+          renderBoard();
+          checkWinner();
+          togglePlayer();
+
+          dataChannel.send(JSON.stringify({ cellIndex: index, player: currentPlayer }));
+        }
+      });
+    });
+
+    function renderBoard() {
+      cells.forEach((cell, index) => {
+        cell.textContent = board[index];
+      });
+    }
+
+    function togglePlayer() {
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+    }
+
+    function checkWinner() {
+      const winningCombinations = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+
+      for (const combination of winningCombinations) {
+        const [a, b, c] = combination;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          statusDisplay.textContent = `Player ${board[a]} wins!`;
+          cells.forEach(cell => cell.removeEventListener('click', () => {}));
+          return;
+        }
+      }
+
+      if (!board.includes(null)) {
+        statusDisplay.textContent = 'Draw!';
+      }
+    }
+  </script>
+</body>
+</html>

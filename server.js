@@ -38,6 +38,23 @@ app.get('/', (req, res) => {
     res.render("index");
   });
 
+  app.get('/start', (req, res) => {
+    res.render("start");
+  });
+
+  app.get('/login', (req, res) => {
+    res.render("login");
+  });
+
+  app.post('/login', (req, res) => {
+    res.render("login");
+  });
+
+  app.get('/call', (req, res) => {
+    console.log(res.get('i'));
+    res.render("login");
+  });
+
   const PORTUI = config.httpPort || 443;
 app.listen(PORTUI, async () => {
   try {
@@ -101,4 +118,25 @@ wss.on('connection', (ws) => {
     delete clients[ws.name];
     broadcastUsers();
   });
+});
+
+
+
+app.get('/generate-room', (req, res) => {
+  const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+  rooms[roomCode] = { users: [] };
+  res.send(`<p>Room Created! Room Code: ${roomCode}</p>`);
+});
+
+app.post('/join-room', (req, res) => {
+  const { username, roomCode } = req.body;
+  if (!rooms[roomCode]) return res.send('Room not found');
+  
+  rooms[roomCode].users.push(username);
+  res.send(`<div>Welcome, ${username}! Your video preview is now available.</div>`);
+});
+
+app.post('/start-call', (req, res) => {
+  // Start the call by setting up WebRTC signaling and other functionality
+  res.send('Call Started');
 });
